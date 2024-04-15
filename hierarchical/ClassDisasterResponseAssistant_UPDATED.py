@@ -61,7 +61,7 @@ class DisasterResponseAssistant:
         self.vectorstore = Chroma.from_documents(
             documents=self.data,
             collection_name=self.collection_name,
-            embedding=embeddings.OllamaEmbeddings(model=self.embedding_model),
+            embedding=embeddings.ollama.OllamaEmbeddings(model=self.embedding_model),
         )
 
     def _create_retriever(self):
