@@ -4,6 +4,100 @@ import pandas as pd
 import time
 import os
 from termcolor import colored
+import matplotlib.colors as mcolors
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_learning_curve(total_rewards_list, EPISODES, labels, colors, optimal_reward):
+    fig, ax = plt.subplots(figsize=(5, 4))
+    for i, total_rewards in enumerate(total_rewards_list):
+        mean_rewards_1, mean_rewards_50 = np.zeros(EPISODES), np.zeros(EPISODES)
+        max_rewards, min_rewards = np.zeros(EPISODES), np.zeros(EPISODES)
+        for t in range(EPISODES):
+            mean_rewards_50[t] = np.mean(total_rewards[max(0, t-100):(t+1)])
+            mean_rewards_1[t] = np.mean(total_rewards[max(0, t-100):(t+1)])
+            max_rewards[t] = np.max(total_rewards[max(0, t-100):(t+1)])  # Adjust the range as needed
+            min_rewards[t] = np.min(total_rewards[max(0, t-100):(t+1)])  # Adjust the range as needed
+        ax.plot(mean_rewards_50, label=f'{labels[i]}', alpha=0.9, color=colors[i])
+        ax.fill_between(range(EPISODES), min_rewards, max_rewards, color=colors[i], alpha=0.15)
+
+    ax.axhline(y=optimal_reward, color='black', linestyle='--', label='Optimal Reward', linewidth=0.8)
+    ax.legend(fontsize=7, loc='lower right')
+    ax.grid(True, color="white", linestyle='-', alpha=0.9)
+    faint_lavender = mcolors.to_rgba('slategrey', alpha=0.2)
+    ax.set_facecolor(faint_lavender)
+    plt.xlabel("Episodes")
+    plt.xticks(np.arange(0, EPISODES, step=250))
+    plt.ylabel("Avg. Total Rewards")
+    plt.title("SAR GridWorld (7x7)")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    plt.show()
+
+    
+### for simple Q and attention
+def policy_evaluation(env, num_eval_episodes, max_eval_steps_per_episode, agent):
+    total_reward = 0
+    steps = 0
+    cnt = 0
+    collisions = []
+    print(f"Evaluating policy for agent: {agent.name}")
+    for _ in range(num_eval_episodes):
+        state = env.reset()
+        for _ in range(max_eval_steps_per_episode):
+            # env.render()
+            action = agent.max_Action(state)
+            state_, reward, done, _ = env.step(action)
+            total_reward += reward
+            print(f"In {state} --> {env.get_actiondict()[action]} --> get {reward} reward | TOTAL REWARD {total_reward}")
+            # state = state_
+            if state_[0] in env.fires:
+                cnt += 1
+                collisions.append(state_[0])
+            steps += 1
+            state = state_
+
+            if done:
+                print(f"Agent: {agent.name} -- Episode finished after {steps} steps with total reward {total_reward} and {cnt} collisions at {collisions}.")
+                break
+
+    mean_reward = total_reward / num_eval_episodes
+    print(f"Mean reward for agent {agent.name}: {mean_reward:.2f}")
+
+
+def policy_evaluation_HRL(env, workers, num_eval_episodes, agent):
+    total_rewards = 0
+    steps = 0
+    cnt = 0
+    collisions = []
+    print(f"Evaluating policy for agent: {agent.name}")
+    for episode in range(num_eval_episodes):
+        state = env.reset()
+        done = False
+        total_reward = 0  # To accumulate rewards for the current episode
+        while not done:
+            current_option = agent.choose_action(state, evaluation=True)  # Get current option
+            # Choose the best action from the current worker's Q-table
+            worker = workers[current_option]
+            action = worker.choose_action(state, evaluation=True)
+            # Execute the action in the environment
+            next_state, reward, done, _ = env.step(action)
+            # Log the details of the current step
+            print(f"In {state}, Option {current_option}, Action {action}, Reward {reward}, Next State {next_state}")
+            # Update state and accumulate reward
+            state = next_state
+            total_reward += reward
+            if tuple([state[0], state[1]]) in env.fires:
+                cnt += 1
+                collisions.append(tuple([state[0], state[1]]))
+            steps += 1
+        print(f"Agent: {agent.name} -- Episode finished after {steps} with total reward: {total_reward} and {cnt} collisions at {collisions}.")
+        total_rewards += total_reward
+
+    average_reward = total_rewards / num_eval_episodes
+    print(f"Average Reward for agent {agent.name}: {average_reward}")
+    return average_reward
+
 
 def get_file_type(document_path):
     # Split the path and get the extension
@@ -46,33 +140,33 @@ def evaluate_policy(env, agent, verbose=True):
     print(f"Total reward: {total_reward} | Steps Taken: {steps} with {cnt} collisions in {collisions} and {cnt_dynamic} drops in {destroy} | Success: {'Yes' if state[0] == env.finalState[0] and state[1] and state[4] else 'No'}\n")
 
 
-def plot_learning_curve(total_rewards_list, EPISODES, labels, colors, optimal_reward):
-    fig, ax = plt.subplots(figsize=(12, 8))
-    for i, total_rewards in enumerate(total_rewards_list):
-        mean_rewards_1, mean_rewards_50 = np.zeros(EPISODES), np.zeros(EPISODES)
-        for t in range(EPISODES):
-            mean_rewards_1[t] = np.mean(total_rewards[max(0, t-5):(t+1)])
-            mean_rewards_50[t] = np.mean(total_rewards[max(0, t-25):(t+1)])
-        ax.plot(mean_rewards_50, label=f'{labels[i]}', alpha=0.9, color=colors[i])
-        ax.fill_between(range(EPISODES), mean_rewards_1, mean_rewards_50, color=colors[i], alpha=0.15)
-        # Check for 20 consecutive iterations with reward >= optimal reward
-        for t in range(EPISODES - 10):
-            if all(total_rewards[t:t+10] >= optimal_reward):
-                ax.axvline(x=t+10, color=colors[i], linestyle='dotted')
-                print(f"Line appears at episode: {t+10} for agent {labels[i]}")
-                break
-    ax.axhline(y=optimal_reward, color='green', linestyle='--', label='Optimal Reward')
-    ax.legend()
-    ax.grid(True, alpha=0.4)  # Add this line to enable gridlines
-    plt.xlabel("Episodes")
-    plt.xticks(np.arange(0, EPISODES, step=500))
-    plt.ylabel("Total Rewards")
-    plt.title("Mean Total Rewards Comparison")
-    plt.show()
-# labels = ["Q", "Q+"]
-# colors = ["blue", "magenta"]
-# total_rewards_list = [total_Q, total_ATT]#, avg_total_rewards_AGENT_1_ATTENTION]
-# plot_learning_curve(total_rewards_list, EPISODES, labels, colors, optimal_reward=79)
+# def plot_learning_curve(total_rewards_list, EPISODES, labels, colors, optimal_reward):
+#     fig, ax = plt.subplots(figsize=(12, 8))
+#     for i, total_rewards in enumerate(total_rewards_list):
+#         mean_rewards_1, mean_rewards_50 = np.zeros(EPISODES), np.zeros(EPISODES)
+#         for t in range(EPISODES):
+#             mean_rewards_1[t] = np.mean(total_rewards[max(0, t-5):(t+1)])
+#             mean_rewards_50[t] = np.mean(total_rewards[max(0, t-25):(t+1)])
+#         ax.plot(mean_rewards_50, label=f'{labels[i]}', alpha=0.9, color=colors[i])
+#         ax.fill_between(range(EPISODES), mean_rewards_1, mean_rewards_50, color=colors[i], alpha=0.15)
+#         # Check for 20 consecutive iterations with reward >= optimal reward
+#         for t in range(EPISODES - 10):
+#             if all(total_rewards[t:t+10] >= optimal_reward):
+#                 ax.axvline(x=t+10, color=colors[i], linestyle='dotted')
+#                 print(f"Line appears at episode: {t+10} for agent {labels[i]}")
+#                 break
+#     ax.axhline(y=optimal_reward, color='green', linestyle='--', label='Optimal Reward')
+#     ax.legend()
+#     ax.grid(True, alpha=0.4)  # Add this line to enable gridlines
+#     plt.xlabel("Episodes")
+#     plt.xticks(np.arange(0, EPISODES, step=500))
+#     plt.ylabel("Total Rewards")
+#     plt.title("Mean Total Rewards Comparison")
+#     plt.show()
+# # labels = ["Q", "Q+"]
+# # colors = ["blue", "magenta"]
+# # total_rewards_list = [total_Q, total_ATT]#, avg_total_rewards_AGENT_1_ATTENTION]
+# # plot_learning_curve(total_rewards_list, EPISODES, labels, colors, optimal_reward=79)
 
 
 def animate_policy(env, agent, iterations):
