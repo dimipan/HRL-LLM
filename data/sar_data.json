@@ -33,28 +33,36 @@
             3
         ],
         "train station": [
-            6,
-            5
-        ],
-        "school": [
-            2,
-            0
-        ],
-        "mall": [
-            1,
-            1
-        ],
-        "bank": [
-            3,
-            6
-        ],
-        "restaurant": [
             5,
             6
         ],
+        "school": [
+            3,
+            0
+        ],
+        "mall": [
+            4,
+            1
+        ],
+        "bank": [
+            6,
+            5
+        ],
+        "restaurant": [
+            2,
+            0
+        ],
         "shop": [
-            0,
+            1,
+            2
+        ],
+        "bakery": [
+            3,
             6
+        ],
+        "petrol station": [
+            2,
+            5
         ]
     }
 }
