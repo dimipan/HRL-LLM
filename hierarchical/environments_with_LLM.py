@@ -442,8 +442,13 @@ class HRLSARenvLLM(gym.Env):
         self.ditchPenalty = -30
         self.savePenalty = -5
 
-        self.POIs, self.fires = [], []
+        self.POIs, self.fires, self.hazards, self.pois = [], [], [], []
         self.visited_information_state = False
+        self.ask_action_counter = 0
+        document_path = "/Users/dimipan/Documents/HRL-LLM/data/sar_data.json"
+        document_type = get_file_type(document_path)
+        self.assistant = DisasterResponseAssistant(document_path, document_type)
+
 
         self.ditches = [(1, 6), (2, 2), (2, 4), (3, 2), (3, 3), (3, 4), (4, 5), \
                         (5, 0), (5, 1), (5, 2), (6, 0), (0, 2), (0, 4)]
@@ -470,69 +475,35 @@ class HRLSARenvLLM(gym.Env):
 
     ### Handles the 'ASK' action, providing the agent with environmental information
     def ask_action(self, state):
+        self.ask_action_counter += 1
         x, y, info_collectedX, info_collectedY, info_collectedZ, victim_saved = state
         verbal_inputs = []
         if not info_collectedZ:
-            VERBAL_INPUT1 = "Hey, there's a victim at the hospital."  ###
-            VERBAL_INPUT2 = "Also, fire was reported at the train station."
-            VERBAL_INPUT3 = "There is a fire at the bank."
-            VERBAL_INPUT4 = "A safe area is the mall."
-            VERBAL_INPUT5 = "Keep an eye on the access route in the school."
-            VERBAL_INPUT6 = "Keep an eye on the access route in the restaurant."
-            VERBAL_INPUT7 = "Keep an eye on the access route in the shop."
-            VERBAL_INPUT8 = "Significant instances of heat at bakery."
-            VERBAL_INPUT9 = "Police told us that no access allowed around the petrol station."
+            VERBAL_INPUT1 = "Hey, there's a victim at the hospital and fire was reported at the train station and the bank. A safe area is the mall and make sure you keep an eye on the access route in the school, restaurant, and shop. There are also reports of significant instances of heat at the bakery. Police told us that no access allowed around the petrol station."
             verbal_inputs.append(VERBAL_INPUT1)
-            verbal_inputs.append(VERBAL_INPUT2)
-            verbal_inputs.append(VERBAL_INPUT3)
-            verbal_inputs.append(VERBAL_INPUT4)
-            verbal_inputs.append(VERBAL_INPUT5)
-            verbal_inputs.append(VERBAL_INPUT6)
-            verbal_inputs.append(VERBAL_INPUT7)
-            verbal_inputs.append(VERBAL_INPUT8)
-            verbal_inputs.append(VERBAL_INPUT9)
-            for input_text in verbal_inputs:
-                    self.simulate_LLM_process_alternative(input_text)
+            
+            if self.ask_action_counter <= 1:
+                print(f"real LLM is about to start handling the input {VERBAL_INPUT1}")
+                for input_text in verbal_inputs:
+                    response = self.assistant.generate_response(input_text)
+                    if response:
+                        self.visited_information_state = True
+                    self.hazards, self.pois = self.assistant.refine_response(response)
+                    print(f"real LLM is about to end handling the input {VERBAL_INPUT1}")
+                    self.update_environment_REAL(self.hazards, self.pois)
+            else:
+                # #print(f"input will be handled hereby by pseudoLLM")
+                # print(self.hazards, self.pois)
+                self.visited_information_state = True
+                self.update_environment_REAL(self.hazards, self.pois)
     
-    ### Simulates the process of obtaining information from a language model (multiple locations)
-    ### problem when two locations associated to different class are present in the smae sentence 
-    def simulate_LLM_process_alternative(self, input):
-        sum_embedding = torch.tensor([0, 0], dtype=torch.float32)
-        locations_in_input = []
-        for location in self.locationsDict:
-            # Check if the location keyword is in the information string
-            if location in input:
-                location_embedding = torch.tensor(self.locationsDict[location], dtype=torch.float32)
-                sum_embedding += location_embedding
-                locations_in_input.append(tuple(int(x) for x in location_embedding.tolist()))
-        #return locations_in_input
-        if locations_in_input:
-            #print(f"response is {locations_in_input} -- when input is: {input}")
-            self.visited_information_state = True
-            #print(f"response is {response}")
-            sentences = input.split(". ") if ". " in input else [input]
-            #print(f"the sentences are: {sentences}")
-            for sentence in sentences:
-                is_poi = any(keyword in sentence for keyword in self.keywords_for_POIs)
-                is_fire = any(keyword in sentence for keyword in self.keywords_for_danger)
-                #print(f"In sentence '{sentence}' we have POI: {is_poi} and fire: {is_fire}")
-                for location, location_coords in self.locationsDict.items():
-                    if location in sentence:
-                        info = tuple(int(x) for x in torch.tensor(location_coords, dtype=torch.float32).tolist())
-                        #print(f"info now is {info} and poi {is_poi} and fire {is_fire}")
-                        # If the location is already categorized, skip it
-                        if info in self.POIs or info in self.fires:
-                            continue
-                        # Add location to POIs or fires based on the context of the sentence
-                        self.update_environment(info, is_poi, is_fire)
-    
-    def update_environment(self, info, is_poi, is_fire):
-        if is_poi and not is_fire:
-            self.sensor_readings[(info[0], info[1], 1, 1, 1, 0)] = 10.0
-            self.POIs.append(info)
-        elif is_fire and not is_poi:
-            self.sensor_readings[(info[0], info[1], 1, 1, 1, 0)] = -10.0
-            self.fires.append(info)
+    def update_environment_REAL(self, haz, poi):
+        for hazardous_location in haz:
+            self.sensor_readings[(hazardous_location[0], hazardous_location[1], 1, 1, 1, 0)] = -10.0
+            self.fires.append(hazardous_location)
+        for safe_location in poi:
+            self.sensor_readings[(safe_location[0], safe_location[1], 1, 1, 1, 0)] = 10.0
+            self.POIs.append(safe_location)
     
     def next_state_vision(self, target, action):
         x, y, _, _, _, _ = target
