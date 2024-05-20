@@ -6,7 +6,6 @@ import os
 from termcolor import colored
 import matplotlib.colors as mcolors
 import numpy as np
-import matplotlib.pyplot as plt
 
 def plot_learning_curve(total_rewards_list, EPISODES, labels, colors, optimal_reward):
     fig, ax = plt.subplots(figsize=(5, 4))
