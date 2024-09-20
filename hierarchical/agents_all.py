@@ -220,11 +220,12 @@ class QLearningAgentAttention:
 
   ### Methods for decaying the exploration rate (epsilon) over time
   def decay_epsilon_exploit(self):
-    if self.EPSILON > 0.1:
-      self.EPSILON -= (8*self.DECAY_RATE)/self.EPISODES
-    else:
-      self.EPSILON = self.EPSILON_MIN
-    return self.EPSILON
+    return 0.01
+    # if self.EPSILON > 0.1:
+    #   self.EPSILON -= (8*self.DECAY_RATE)/self.EPISODES
+    # else:
+    #   self.EPSILON = self.EPSILON_MIN
+    # return self.EPSILON
 
   def decay_epsilon(self):
     if self.EPSILON > 0.1:
@@ -338,7 +339,7 @@ class QLearningAgentAttention:
 
 ### Hiearchical Q learning --> HRL (multiple workers - action decomposition - hierarchical structure)
 class HierarchicalQLearningAgent:
-    def __init__(self, env, state_space, action_space, learning_rate=0.1, discount_factor=0.998, epsilon=1.0, epsilon_decay=0.995, min_epsilon=0.01, decay_rate=2, name='HRL'):
+    def __init__(self, env, state_space, action_space, learning_rate=0.1, discount_factor=0.98, epsilon=1.0, epsilon_decay=0.995, min_epsilon=0.01, decay_rate=2, name='HRL'):
         self.q_table = np.zeros((state_space, action_space))
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
@@ -420,7 +421,7 @@ class HierarchicalQLearningAgent:
 
 ### Hiearchical Q learning --> HRL-Attention  (multiple workers - action decomposition - hierarchical structure - attention)
 class HierarchicalQLearningAgentAttention:
-    def __init__(self, env, state_space, action_space, learning_rate=0.1, discount_factor=0.998, epsilon=1.0, epsilon_decay=0.995, min_epsilon=0.01, decay_rate=2, name='HRL-Attention'):
+    def __init__(self, env, state_space, action_space, learning_rate=0.1, discount_factor=0.98, epsilon=1.0, epsilon_decay=0.995, min_epsilon=0.01, decay_rate=2, name='HRL-Attention'):
         self.q_table = np.zeros((state_space, action_space))
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
@@ -477,6 +478,7 @@ class HierarchicalQLearningAgentAttention:
             state_index, action = index
             if action_values != 0:
                 self.q_table[state_index][action] = action_values
+                print(f"Updated Q-table at {state_index}, action {action} with value {action_values}")
                 
     
     def choose_action(self, state, evaluation=False):
@@ -511,11 +513,12 @@ class HierarchicalQLearningAgentAttention:
         return self.epsilon
     
     def decay_epsilon_exploit(self, episodes):
-        if self.epsilon > 0.1:
-            self.epsilon -= (8*self.decay_rate) / episodes
-        else:
-            self.epsilon = self.min_epsilon
-        return self.epsilon
+        return 0.01
+        # if self.epsilon > 0.1:
+        #     self.epsilon -= (8*self.decay_rate) / episodes
+        # else:
+        #     self.epsilon = self.min_epsilon
+        # return self.epsilon
 
 
     def train(self, manager, workers, num_episodes):

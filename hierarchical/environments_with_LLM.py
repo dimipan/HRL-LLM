@@ -146,7 +146,8 @@ class SARenvLLM:
         position, info_statusX, info_statusY, info_statusZ = state
         verbal_inputs = []
         if not info_statusZ:
-            VERBAL_INPUT1 = "Hey, there's a victim at the hospital and fire was reported at the train station and the bank. A safe area is the mall and make sure you keep an eye on the access route in the school, restaurant, and shop. There are also reports of significant instances of heat at the bakery. Police told us that no access allowed around the petrol station."
+            VERBAL_INPUT1 = ("Hey, there's a victim at the hospital. A fire was reported at the train station. There is a fire at the bank. A safe area is the mall. You must go to the access route in the school. Another access route at the restaurant. And there is a shelter in the shop. There are also reports of significant instances of heat at the bakery. Police told us that no access allowed around the petrol station.")
+            # VERBAL_INPUT1 = "Hey, there's a victim at the hospital and fire was reported at the train station and the bank. A safe area is the mall and make sure you keep an eye on the access route in the school, restaurant, and shop. There are also reports of significant instances of heat at the bakery. Police told us that no access allowed around the petrol station."
             verbal_inputs.append(VERBAL_INPUT1)
             
             if self.ask_action_counter <= 1:
@@ -434,8 +435,8 @@ class HRLSARenvLLM(gym.Env):
         self.max_steps = self.grid_size * self.grid_size
         self.total_turns = 0
 
-        self.winReward = 118
-        self.askingReward = 20
+        self.winReward = 100
+        self.askingReward = 6
         self.exceedStepPenalty = -5
         self.turnPenalty = -1
         self.wrongAskPenalty = -5
@@ -445,7 +446,7 @@ class HRLSARenvLLM(gym.Env):
         self.POIs, self.fires, self.hazards, self.pois = [], [], [], []
         self.visited_information_state = False
         self.ask_action_counter = 0
-        document_path = "/Users/dimipan/Documents/HRL-LLM/data/sar_data.json"
+        document_path = "/home/dimi/HRL-LLM/data/sar_data.json"
         document_type = get_file_type(document_path)
         self.assistant = DisasterResponseAssistant(document_path, document_type)
 
@@ -479,7 +480,8 @@ class HRLSARenvLLM(gym.Env):
         x, y, info_collectedX, info_collectedY, info_collectedZ, victim_saved = state
         verbal_inputs = []
         if not info_collectedZ:
-            VERBAL_INPUT1 = "Hey, there's a victim at the hospital and fire was reported at the train station and the bank. A safe area is the mall and make sure you keep an eye on the access route in the school, restaurant, and shop. There are also reports of significant instances of heat at the bakery. Police told us that no access allowed around the petrol station."
+            VERBAL_INPUT1 = ("Hey, there's a victim at the hospital. A fire was reported at the train station. There is a fire at the bank. A safe area is the mall. You must go to the access route in the school. Another access route at the restaurant. And there is a shelter in the shop. There are also reports of significant instances of heat at the bakery. Police told us that no access allowed around the petrol station.")
+            # VERBAL_INPUT1 = "Hey, there's a victim at the hospital and fire was reported at the train station and the bank. A safe area is the mall and make sure you keep an eye on the access route in the school, restaurant, and shop. There are also reports of significant instances of heat at the bakery. Police told us that no access allowed around the petrol station."
             verbal_inputs.append(VERBAL_INPUT1)
             
             if self.ask_action_counter <= 1:
@@ -564,7 +566,7 @@ class HRLSARenvLLM(gym.Env):
                 if action == 0:  # Assume action 0 is "getX"
                     if not info_collectedX:
                         info_collectedX = 1
-                        # reward += self.askingReward  # Reward for collecting the info for the first time
+                        reward += self.askingReward  # Reward for collecting the info for the first time
                     else:
                         pass
                         # reward += self.wrongAskPenalty  # Penalty for attempting to collect again
@@ -575,7 +577,7 @@ class HRLSARenvLLM(gym.Env):
                     if not info_collectedY and info_collectedX:
                         # self.ask_action(self.state)
                         info_collectedY = 1
-                        # reward += self.askingReward  # Reward for collecting the info for the first time
+                        reward += self.askingReward  # Reward for collecting the info for the first time
                     else:
                         pass
                         # reward += self.wrongAskPenalty  # Penalty for attempting to collect again
@@ -586,7 +588,7 @@ class HRLSARenvLLM(gym.Env):
                     if not info_collectedZ and info_collectedX and info_collectedY:
                         self.ask_action(self.state)
                         info_collectedZ = 1
-                        # reward += self.askingReward  # Reward for collecting the info for the first time
+                        reward += self.askingReward  # Reward for collecting the info for the first time
                     else:
                         pass
                         # reward += self.wrongAskPenalty  # Penalty for attempting to collect again

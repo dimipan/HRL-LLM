@@ -497,8 +497,8 @@ class HRLSarENV(gym.Env):
         self.max_steps = self.grid_size * self.grid_size
         self.total_turns = 0
 
-        self.winReward = 118
-        self.askingReward = 20
+        self.winReward = 100
+        self.askingReward = 6
         self.exceedStepPenalty = -5
         self.turnPenalty = -1
         self.wrongAskPenalty = -5
